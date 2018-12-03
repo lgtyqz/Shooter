@@ -258,6 +258,12 @@ Shield.prototype.update = function(){
     }
     this.delayTimer--;
 }
+Shield.prototype.fix = function(obj){
+    if(obj instanceof Player && (this.user) instanceof Player){
+        this.position.x = obj.position.x + obj.width/2 - this.width/2;
+        this.position.y = obj.position.y + obj.height/2 - this.height/2;
+    }
+}
 Shield.prototype.interact = function(obj){
     if(obj instanceof Bullet && this.collides(obj) &&
     obj.user != this.user){
@@ -273,9 +279,75 @@ Shield.prototype.interact = function(obj){
             entities.push(particles[i]);
         }
     }
+    this.fix(obj);
+}
+
+function Reflector(X, Y, W, H){
+    Shield.call(this, X, Y);
+    this.width = 20;
+    this.height = 60;
+    this.color = [150, 0, 100];
+}
+Reflector.prototype = Object.create(Shield.prototype);
+Reflector.prototype.fix = function(obj){
     if(obj instanceof Player && (this.user) instanceof Player){
-        this.position.x = obj.position.x + obj.width/2 - this.width/2;
+        this.position.x = obj.position.x + obj.width + 10;
         this.position.y = obj.position.y + obj.height/2 - this.height/2;
+    }
+}
+Reflector.prototype.interact = function(obj){
+    if(
+        (obj instanceof Bullet || obj instanceof Enemy)
+        && this.collides(obj) && obj.user != this.user){
+        obj.velocity.x *= -1.25;
+        if(obj instanceof Bullet){
+            obj.setUser(this.user);
+        }
+    }
+    this.fix(obj);
+}
+
+function WindScreen(){
+    Shield.call(this, 0, 0);
+    this.width = GAME.canvas.width;
+    this.height = 200;
+    this.delayTimer = 30;
+    this.color = [200, 200, 200];
+}
+WindScreen.prototype = Object.create(Shield.prototype);
+WindScreen.prototype.update = function(){
+    this.draw();
+    if(this.delayTimer <= 0){
+        this.dead = true;
+    }
+    this.delayTimer--;
+}
+WindScreen.prototype.fix = function(obj){
+    if(obj instanceof Player && (this.user) instanceof Player){
+        this.position.x = 0;
+        this.position.y = obj.position.y + obj.height/2 - this.height/2;
+    }
+}
+WindScreen.prototype.interact = function(obj){
+    if((obj instanceof Bullet || obj instanceof Enemy) && this.collides(obj)){
+        obj.applyForce(1.5, 0);
+        if(obj instanceof Bullet){
+            obj.setUser(null);
+        }
+    }
+    this.fix(obj);
+}
+
+function ForceShot(X, Y){
+    Bullet.call(this, X, Y, 15, 50);
+    this.color = [255, 200, 0];
+}
+ForceShot.prototype = Object.create(Bullet.prototype);
+ForceShot.prototype.interact = function(obj){
+    if(this.typeCheck(obj)){
+        obj.hp -= 2;
+        obj.velocity.x = 22;
+        this.dead = true;
     }
 }
 
@@ -422,6 +494,60 @@ CrossShot.prototype.interact = function(obj){
     Enemy.prototype.interact.call(this, obj);
 }
 
+function Mirage(X, Y, variant=1){
+    Enemy.call(this, X, Y, 30, 30);
+    this.color = [255, 0, 255];
+    this.hp = 1;
+    this.velocity = {x: 0, y: 0};
+    this.variant = variant;
+    this.delayTimer = 0;
+}
+Mirage.prototype = Object.create(Enemy.prototype);
+Mirage.prototype.draw = function(){
+    var CTX = GAME.context;
+    this.centerPosition();
+    CTX.globalAlpha = (20 - this.delayTimer % 20)/20;
+    CTX.fillStyle = listToColor(this.color);
+    CTX.fillRect(0, 0, this.width, this.height);
+    CTX.restore();
+    CTX.globalAlpha = 1;
+}
+Mirage.prototype.update = function(){
+    this.delayTimer++;
+    if(this.delayTimer % 20 == 0 && this.delayTimer < 100){
+        this.position.x -= 200 * Math.random() + 50;
+        this.position.y += 400 * Math.random() - 200 - 
+                            (this.position.y - GAME.canvas.height/2);
+        if(this.variant > 2){
+            for(var i = 0; i < 2 * Math.PI; i += 2 * Math.PI/5){
+                var b = new Bullet(this.position.x + this.width/2,
+                                this.position.y + this.height/2, 10, 10);
+                b.setUser(this);
+                b.setVelocity(8 * Math.cos(i), 8 * -Math.sin(i));
+                entities.push(b);
+            }
+        }
+    }else if(this.delayTimer > 120){
+        this.delayTimer = 0;
+    }
+    Enemy.prototype.update.call(this);
+}
+Mirage.prototype.interact = function(obj){
+    if(obj instanceof Player){
+        if(this.delayTimer > 100 && this.delayTimer % 5 == 0){
+            var dx = obj.position.x - this.position.x;
+            var dy = obj.position.y - this.position.y;
+            var mag = Math.sqrt(dx ** 2 + dy ** 2);
+            var b = new Bullet(this.position.x + this.width/2,
+                                this.position.y + this.height/2, 10, 10);
+            b.setUser(this);
+            b.setVelocity(8 * dx/mag, 8 * dy/mag);
+            entities.push(b);
+        }
+    }
+    Enemy.prototype.interact.call(this, obj);
+}
+
 function Player(X, Y, W, H){
     Entity.call(this, X, Y, W, H);
     this.goingLeft = false;
@@ -481,9 +607,117 @@ function drawForeground(){
         alert("GAME OVER!");
     }
 }
+
+function PWeapon(name, charge){
+    this.name = name;
+    this.charge = charge;
+}
+PWeapon.prototype.fire = function(){
+    if(player.delayTimer >= this.charge){
+        this.pewpew();
+        player.delayTimer -= this.charge;
+    }
+}
+PWeapon.prototype.pewpew = function(){
+    //stub method
+}
+
+function W_Peashooter(){
+    PWeapon.call(this, "Peashooter", 10);
+}
+W_Peashooter.prototype = Object.create(PWeapon.prototype);
+W_Peashooter.prototype.pewpew = function(){
+    var b = new Bullet(player.position.x + player.width/2,
+                            player.position.y + player.height/2, 8, 8,
+                            [0, 0, 255]);
+    b.setUser(player);
+    b.setVelocity(12, 0);
+    entities.push(b);
+}
+
+function W_Blaster(){
+    PWeapon.call(this, "Power Blaster", 30);
+}
+W_Blaster.prototype = Object.create(PWeapon.prototype);
+W_Blaster.prototype.pewpew = function(){
+    var b = new PowerBullet(player.position.x + player.width/2,
+                            player.position.y + player.height/2);
+    b.setUser(player);
+    b.setVelocity(15, 0);
+    entities.push(b);
+}
+
+function W_FireworkLauncher(){
+    PWeapon.call(this, "Firework", 25);
+}
+W_FireworkLauncher.prototype = Object.create(PWeapon.prototype);
+W_FireworkLauncher.prototype.pewpew = function(){
+    var b = new Firework(player.position.x + player.width/2,
+                        player.position.y + player.height/2);
+    b.setUser(player);
+    b.setVelocity(12, 0);
+    entities.push(b);
+}
+
+function W_Shield(){
+    PWeapon.call(this, "Shield", 40);
+}
+W_Shield.prototype = Object.create(PWeapon.prototype);
+W_Shield.prototype.pewpew = function(){
+    var s = new Shield(player.position.x, player.position.y);
+    s.setUser(player);
+    player.invinciTimer = 30;
+    entities.push(s);
+}
+
+function W_Reflector(){
+    PWeapon.call(this, "Reflector", 40);
+}
+W_Reflector.prototype = Object.create(PWeapon.prototype);
+W_Reflector.prototype.pewpew = function(){
+    var r = new Reflector(player.position.x, player.position.y);
+    r.setUser(player);
+    player.invinciTimer = 25;
+    entities.push(r);
+}
+
+function W_Wind(){
+    PWeapon.call(this, "Divine Wind", 100);
+}
+W_Wind.prototype = Object.create(PWeapon.prototype);
+W_Wind.prototype.pewpew = function(){
+    var w = new WindScreen();
+    w.setUser(player);
+    entities.push(w);
+}
+
+function W_ForceShooter(){
+    PWeapon.call(this, "Force Shooter", 20);
+}
+W_ForceShooter.prototype = Object.create(PWeapon.prototype);
+W_ForceShooter.prototype.pewpew = function(){
+    var b = new ForceShot(player.position.x + player.width/2,
+                            player.position.y + player.height/2 - 25);
+    b.setUser(player);
+    b.setVelocity(20, 0);
+    entities.push(b);
+}
+
 var entities = [];
 var player = new Player(0, 0, 30, 30);
 var initTime = 0;
+var weapons = [
+    new W_Peashooter(),
+    new W_Blaster(),
+    new W_FireworkLauncher(),
+    new W_Shield(),
+    new W_Reflector(),
+    new W_Wind(),
+    new W_ForceShooter(),
+];
+var rWeapons = weapons.slice();
+rWeapons.sort( function() { return 0.5 - Math.random() } );
+player.weapons = [rWeapons[0], rWeapons[1], rWeapons[2]];
 document.onkeydown = function(e){
     e = e || window.event;
     if(e.keyCode == 37){ //Left
@@ -503,32 +737,18 @@ document.onkeydown = function(e){
         player.velocity.y *= -1;
     }
     if(e.keyCode == 90){ //Z, shoot primary weapon
-        if(player.delayTimer > 25){
-            var b = new Firework(player.position.x + player.width/2,
-                            player.position.y + player.height/2);
-            b.setUser(player);
-            b.setVelocity(12, 0);
-            entities.push(b);
-            player.delayTimer -= 25;
+        if(player.weapons[0] != null){
+            player.weapons[0].fire();
         }
     }
     if(e.keyCode == 88){ //X, shoot secondary weapon
-        if(player.delayTimer > 30){
-            var b = new PowerBullet(player.position.x + player.width/2,
-                            player.position.y + player.height/2);
-            b.setUser(player);
-            b.setVelocity(15, 0);
-            entities.push(b);
-            player.delayTimer -= 30;
+        if(player.weapons[1] != null){
+            player.weapons[1].fire();
         }
     }
     if(e.keyCode == 67){ //C, shoot tertiary weapon
-        if(player.delayTimer > 40){
-            var s = new Shield(player.position.x, player.position.y);
-            s.setUser(player);
-            player.invinciTimer = 30;
-            entities.push(s);
-            player.delayTimer -= 40;
+        if(player.weapons[2] != null){
+            player.weapons[2].fire();
         }
     }
 }
@@ -560,6 +780,9 @@ function spawnEnemies(){
     }
     if(GAME.frameCount % 250 == 0){
         entities.push(new Lost(1199, Math.random() * 550, 3));
+    }
+    if(GAME.frameCount % 700 == 350){
+        entities.push(new Mirage(1199, Math.random() * 550, 3));
     }
 }
 function main(){

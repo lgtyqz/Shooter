@@ -868,6 +868,10 @@ document.onkeydown = function(e){
             player.weapons[2].fire();
         }
     }
+    if(e.keyCode == 79){ //P, activate hard mode
+        GAME.frameCount = 7500;
+        alert("Hard mode activated.");
+    }
 }
 document.onkeyup = function(e){
     e = e || window.event;

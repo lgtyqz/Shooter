@@ -8,7 +8,7 @@
             }
         </style>
         <script>
-//header
+//headers
 
 var GAME = {
     canvas: document.createElement("canvas"),
@@ -350,6 +350,10 @@ WindScreen.prototype.interact = function(obj){
     this.fix(obj);
 }
 
+function StabRod(){
+    
+}
+
 function ForceShot(X, Y){
     Bullet.call(this, X, Y, 15, 50);
     this.color = [255, 200, 0];
@@ -358,7 +362,10 @@ ForceShot.prototype = Object.create(Bullet.prototype);
 ForceShot.prototype.interact = function(obj){
     if(this.typeCheck(obj)){
         obj.hp -= 2;
-        obj.velocity.x = 22;
+        if(!(obj.isBoss === true)){
+            obj.velocity.x = 22;
+        }
+
         this.dead = true;
     }
 }
@@ -628,6 +635,62 @@ Mirage.prototype.interact = function(obj){
     Enemy.prototype.interact.call(this, obj);
 }
 
+function DoomFairy(X, Y, variant=1){
+    Enemy.call(this, X, Y, 80, 80);
+    this.color = [255, 0, 0];
+    this.hp = 100;
+    this.delayTimer = 0;
+    this.isBoss = true;
+}
+DoomFairy.prototype = Object.create(Enemy.prototype);
+DoomFairy.prototype.update = function(){
+    if(this.position.x < 0){
+        this.position.x = 0;
+        this.velocity.x *= -1;
+    }
+    if(this.position.x + this.width > GAME.canvas.width){
+        this.position.x = GAME.canvas.width - this.width;
+        this.velocity.x *= -1;
+    }
+    if(this.position.y < 0){
+        this.position.y = 0;
+        this.velocity.y *= -1;
+    }
+    if(this.position.y + this.height > GAME.canvas.height){
+        this.position.y = GAME.canvas.height - this.height;
+        this.velocity.y *= -1;
+    }
+    this.applyFriction();
+    this.velocity.x *= 1.1;
+    this.velocity.y *= 1.1;
+    this.delayTimer++;
+    if(this.delayTimer < 100 && this.delayTimer % 2 == 0){
+        for(var i = 0; i < 2; i++){
+            var b = new Bullet(this.position.x + this.width/2,
+                                this.position.y + this.height/2, 10, 10);
+            b.setUser(this);
+            b.setVelocity(6 * (i * 2 - 1) * Math.cos(this.delayTimer/50 * 2 * Math.PI),
+                        6 * (i * 2 - 1) * Math.sin(this.delayTimer/50 * 2 * Math.PI));
+            entities.push(b);
+        }
+    }
+    if(this.delayTimer > 300){
+        this.delayTimer = 0;
+    }
+    Enemy.prototype.update.call(this);
+}
+DoomFairy.prototype.interact = function(obj){
+    if(obj instanceof Player){
+        if(this.delayTimer < 250 && this.delayTimer > 245){
+            var dx = obj.position.x - this.position.x;
+            var dy = obj.position.y - this.position.y;
+            var mag = Math.sqrt(dx ** 2 + dy ** 2);
+            this.applyForce(5 * dx/mag, 5 * dy/mag);
+        }
+    }
+    Enemy.prototype.interact.call(this, obj);
+}
+
 function Player(X, Y, W, H){
     Entity.call(this, X, Y, W, H);
     this.goingLeft = false;
@@ -868,7 +931,7 @@ document.onkeydown = function(e){
             player.weapons[2].fire();
         }
     }
-    if(e.keyCode == 79){ //P, activate hard mode
+    if(e.keyCode == 79){ //O, activate hard mode
         GAME.frameCount = 7500;
         alert("Hard mode activated.");
     }
@@ -964,7 +1027,7 @@ function spawnEnemies(){
         if(GAME.frameCount % 400 == 200){
             entities.push(new CrossShot(1199, Math.random() * 550, 2));
         }
-    }else{
+    }else if(GAME.frameCount < 9000){
         if(GAME.frameCount % 500 == 0){
             entities.push(new Raven(1199, Math.random() * 550, 3));
         }
@@ -980,6 +1043,9 @@ function spawnEnemies(){
         if(GAME.frameCount % 400 == 200){
             entities.push(new CrossShot(1199, Math.random() * 550, 3));
         }
+    }
+    if(GAME.frameCount == 9000){
+        entities.push(new DoomFairy(1199, 300, 1));
     }
 }
 function main(){

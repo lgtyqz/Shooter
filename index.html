@@ -362,7 +362,7 @@ ForceShot.prototype = Object.create(Bullet.prototype);
 ForceShot.prototype.interact = function(obj){
     if(this.typeCheck(obj)){
         obj.hp -= 2;
-        if(!(obj.isBoss === true)){
+        if(obj.isBoss === true){
             obj.velocity.x = 22;
         }
 
@@ -640,7 +640,7 @@ function DoomFairy(X, Y, variant=1){
     this.color = [255, 0, 0];
     this.hp = 100;
     this.delayTimer = 0;
-    this.isBoss = true;
+    this.boss = true;
 }
 DoomFairy.prototype = Object.create(Enemy.prototype);
 DoomFairy.prototype.update = function(){
@@ -895,9 +895,6 @@ var rWeapons = weapons.slice();
 rWeapons.sort( function() { return 0.5 - Math.random() } );
 
 player.weapons = [rWeapons[5], rWeapons[1], rWeapons[3]];
-alert("Weapon Loadout:\nZ: " +  player.weapons[0].name +
-        "\nX: " + player.weapons[1].name +
-        "\nC: " + player.weapons[2].name);
 document.onkeydown = function(e){
     e = e || window.event;
     if(e.keyCode == 37){ //Left
@@ -953,6 +950,9 @@ document.onkeyup = function(e){
 }
 function init(){
     GAME.start();
+    alert("Weapon Loadout:\nZ: " +  player.weapons[0].name +
+        "\nX: " + player.weapons[1].name +
+        "\nC: " + player.weapons[2].name);
     GAME.activate();
 }
 function spawnEnemies(){
@@ -1029,7 +1029,7 @@ function spawnEnemies(){
         }
     }else if(GAME.frameCount < 9000){
         if(GAME.frameCount % 500 == 0){
-            entities.push(new Raven(1199, Math.random() * 550, 3));
+            entities.push(new Raven(1199, Math.random() * 550, 2));
         }
         if(GAME.frameCount % 200 == 0){
             entities.push(new Bat(1199, Math.random() * 550, 3));
@@ -1038,7 +1038,7 @@ function spawnEnemies(){
             entities.push(new Lost(1199, Math.random() * 550, 3));
         }
         if(GAME.frameCount % 700 == 350){
-            entities.push(new Mirage(1199, Math.random() * 550, 3));
+            entities.push(new Mirage(1199, Math.random() * 550, 1));
         }
         if(GAME.frameCount % 400 == 200){
             entities.push(new CrossShot(1199, Math.random() * 550, 3));

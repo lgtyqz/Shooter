@@ -56,11 +56,15 @@ var sounds = {
     boom: new Audio("boom.ogg"),
     mehPew: new Audio("mehpew.ogg"),
     weirdPew: new Audio("weirdpew.ogg"),
-	shieldStart: new Audio("shieldstart.ogg"),
-    shieldBlock: new Audio("shieldhit.ogg")
+    shieldStart: new Audio("shieldstart.ogg"),
+    shieldBlock: new Audio("shieldhit.ogg"),
+    rush: new Audio("rush.ogg"),
+    uwu: new Audio("uwu.ogg"),
+    bossDeath: new Audio("bossdeath.ogg")
 }
 var musics = [
 	new Audio("A_Melancholy_Autumn.ogg"), //Level 1 music
+	new Audio("Urban_Groove.ogg"), //Level 2 music
 ];
 for(var i = 0; i < musics.length; i++){
 	musics[i].loop = true;
@@ -264,14 +268,14 @@ Firework.prototype.update = function(){
             entities.push(b);
         }
         this.dead = true;
-		sounds.boom.currentTime = 0;
-		sounds.boom.play();
+        sounds.boom.currentTime = 0;
+        sounds.boom.play();
     }
     this.delayTimer--;
 }
 Firework.prototype.interact = function(obj){
     if(this.typeCheck(obj)){
-		sounds.hit.currentTime = 0;
+        sounds.hit.currentTime = 0;
         sounds.hit.play();
         obj.hp -= 0.5;
         this.dead = true;
@@ -320,8 +324,8 @@ Shield.prototype.interact = function(obj){
                                     Math.random() * 10 - 5);
             entities.push(particles[i]);
         }
-		sounds.hit.currentTime = 0;
-		sounds.hit.play();
+        sounds.hit.currentTime = 0;
+        sounds.hit.play();
     }
     this.fix(obj);
 }
@@ -347,8 +351,8 @@ Reflector.prototype.interact = function(obj){
         if(obj instanceof Bullet){
             obj.setUser(this.user);
         }
-		sounds.shieldBlock.currentTime = 0;
-		sounds.shieldBlock.play();
+        sounds.shieldBlock.currentTime = 0;
+        sounds.shieldBlock.play();
     }
     this.fix(obj);
 }
@@ -404,6 +408,8 @@ StabRod.prototype.interact = function(obj){
         && this.collides(obj) && obj.user != this.user){
         obj.hp -= 5;
         this.dead = true;
+        sounds.hit.currentTime = 0;
+        sounds.hit.play();
     }
     this.fix(obj);
 }
@@ -416,7 +422,7 @@ ForceShot.prototype = Object.create(Bullet.prototype);
 ForceShot.prototype.interact = function(obj){
     if(this.typeCheck(obj)){
         obj.hp -= 2;
-		sounds.hit.currentTime = 0;
+        sounds.hit.currentTime = 0;
         sounds.hit.play();
         if(!obj.isBoss){
             obj.velocity.x = 22;
@@ -524,6 +530,8 @@ Lost.prototype.interact = function(obj){
         }
         if(mag < 200 && mag > 175 && this.variant > 2){
             this.applyForce(15 * dx/mag, 15 * dy/mag);
+            sounds.rush.currentTime = 0;
+            sounds.rush.play();
         }
     }
     Enemy.prototype.interact.call(this, obj);
@@ -615,7 +623,7 @@ CrossShot.prototype.update = function(){
         b.setUser(this);
         b.setVelocity(-8, 0);
         entities.push(b);
-		sounds.pew.currentTime = 0;
+        sounds.pew.currentTime = 0;
         sounds.pew.play();
         if(this.delayTimer == 150 || this.variant == 3){
             for(var i = 3 * Math.PI/4; i < 11 * Math.PI/8; i += Math.PI/8){
@@ -797,6 +805,8 @@ Memory.prototype.update = function(){
     }
     if(this.delayTimer > 100){
         this.dead = true;
+        sounds.bossDeath.currentTime = 0;
+        sounds.bossDeath.play();
     }
     Enemy.prototype.update.call(this);
 }
@@ -971,6 +981,14 @@ DoomFairy.prototype.update = function(){
         this.delayTimer = 0;
     }
     Enemy.prototype.update.call(this);
+    if(this.dead){
+        GAME.level++;
+        GAME.frameCount = 0;
+        player.hp = 3;
+        musics[GAME.level - 2].pause();
+        musics[GAME.level - 1].play();
+        sounds.bossDeath.play();
+    }
 }
 DoomFairy.prototype.interact = function(obj){
     if(obj instanceof Player){
@@ -983,6 +1001,8 @@ DoomFairy.prototype.interact = function(obj){
             }else{
                 this.applyForce(7 * dx/mag, 7 * dy/mag);
             }
+            sounds.rush.currentTime = 0;
+            sounds.rush.play();
         }
     }
     Enemy.prototype.interact.call(this, obj);
@@ -1024,6 +1044,8 @@ Blazer.prototype.update = function(){
         b.setUser(this);
         b.setVelocity(10, 0);
         entities.push(b);
+        sounds.laserPew.currentTime = 0;
+        sounds.laserPew.play();
     }
     if(this.delayTimer > 125 &&
     this.delayTimer < 125 + this.sprayDuration &&
@@ -1043,6 +1065,8 @@ Blazer.prototype.update = function(){
         b.setVelocity(6 * Math.cos(angle + Math.PI),
                     6 * Math.sin(angle + Math.PI));
         entities.push(b);
+        sounds.pew.currentTime = 0;
+        sounds.pew.play();
     }
     if(this.delayTimer > 125 + this.sprayDuration){
         this.delayTimer = 0;
@@ -1054,6 +1078,7 @@ Blazer.prototype.interact = function(obj){
         if(this.delayTimer < 75){
             this.applyForce(
                 0.75 * Math.sign(obj.position.x - this.position.x), 0);
+            sounds.uwu.play();
         }
     }
     Enemy.prototype.interact.call(this, obj);
@@ -1187,9 +1212,9 @@ function drawForeground(){
     if(player.hp <= 0){
         clearInterval(GAME.interval);
         alert("GAME OVER!");
-		for(var i = 0; i < musics.length; i++){
-			musics[i].pause();
-		}
+        for(var i = 0; i < musics.length; i++){
+            musics[i].pause();
+        }
     }
 }
 
@@ -1349,42 +1374,51 @@ rWeapons.sort( function() { return 0.5 - Math.random() } );
 
 player.weapons = [rWeapons[5], rWeapons[1], rWeapons[3]];
 document.onkeydown = function(e){
-	musics[GAME.level - 1].play();
-    e = e || window.event;
-    if(e.keyCode == 37){ //Left
-        player.goingLeft = true;
-    }
-    if(e.keyCode == 39){ //Right
-        player.goingRight = true;
-    }
-    if(e.keyCode == 38){ //Up
-        player.goingUp = true;
-    }
-    if(e.keyCode == 40){ //Down
-        player.goingDown = true;
-    }
-    if(e.keyCode == 16){ //Shift
-        player.velocity.x *= -1;
-        player.velocity.y *= -1;
-    }
-    if(e.keyCode == 90){ //Z, shoot primary weapon
-        if(player.weapons[0] != null){
-            player.weapons[0].fire();
+    if(player.hp > 0){
+        musics[GAME.level - 1].play();
+        e = e || window.event;
+        if(e.keyCode == 37){ //Left
+            player.goingLeft = true;
         }
-    }
-    if(e.keyCode == 88){ //X, shoot secondary weapon
-        if(player.weapons[1] != null){
-            player.weapons[1].fire();
+        if(e.keyCode == 39){ //Right
+            player.goingRight = true;
         }
-    }
-    if(e.keyCode == 67){ //C, shoot tertiary weapon
-        if(player.weapons[2] != null){
-            player.weapons[2].fire();
+        if(e.keyCode == 38){ //Up
+            player.goingUp = true;
         }
-    }
-    if(e.keyCode == 79){ //O, activate hard mode
-        GAME.frameCount = 7500;
-        alert("Hard mode activated.");
+        if(e.keyCode == 40){ //Down
+            player.goingDown = true;
+        }
+        if(e.keyCode == 16){ //Shift
+            player.velocity.x *= -1;
+            player.velocity.y *= -1;
+        }
+        if(e.keyCode == 90){ //Z, shoot primary weapon
+            if(player.weapons[0] != null){
+                player.weapons[0].fire();
+            }
+        }
+        if(e.keyCode == 88){ //X, shoot secondary weapon
+            if(player.weapons[1] != null){
+                player.weapons[1].fire();
+            }
+        }
+        if(e.keyCode == 67){ //C, shoot tertiary weapon
+            if(player.weapons[2] != null){
+                player.weapons[2].fire();
+            }
+        }
+        if(e.keyCode == 79){ //O, skip level
+            GAME.level++;
+            GAME.frameCount = 0;
+            player.hp = 3;
+            musics[GAME.level - 2].pause();
+            musics[GAME.level - 1].play();
+            sounds.bossDeath.play();
+        }
+        if(e.keyCode == 80){ //P, fast-forward
+            GAME.frameCount = Number(prompt());
+        }
     }
 }
 document.onkeyup = function(e){
@@ -1573,7 +1607,28 @@ function spawnEnemies(){
                     }
                 }
             }else if(GAME.frameCount < 10000){
-                
+                if(GAME.frameCount % 300 == 0){
+                    if(GAME.frameCount % 400 >= 100){
+                        entities.push(new Lost(1199, Math.random() * 550, 2));
+                    }else{
+                        entities.push(new Lost(1199, 200 + Math.random() * 150, 2));
+                    }
+                }
+                if(GAME.frameCount % 550 == 0){
+                    entities.push(new DemonShape(1199, 200 + Math.random() * (200 - 65), 1));
+                }
+                if(GAME.frameCount % 500 == 0){
+                    entities.push(new Memory(1199, 280, 1));
+                }
+                if(GAME.frameCount % 600 == 0){
+                    if(GAME.frameCount % 400 >= 100){
+                        entities.push(new WhiteHead(1199, Math.random() * 550, 1));
+                        entities.push(new BlackHead(1199, Math.random() * 550, 1));
+                    }else{
+                        entities.push(new WhiteHead(1199, 200 + Math.random() * 150, 1));
+                        entities.push(new BlackHead(1199, 200 + Math.random() * 150, 1));
+                    }
+                }
             }
             if(GAME.frameCount == 10000){
                 entities.push(new Blazer(1199, 260, 1));

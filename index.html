@@ -42,6 +42,7 @@ var GAME = {
     camera: {x:0, y:0},
     debugMode: false,
     isPaused: true,
+    musicVolume: 1,
     DATE: new Date(),
 }
 function colorToList(color){
@@ -1425,6 +1426,28 @@ document.onkeydown = function(e){
         sounds.pause.currentTime = 0;
         sounds.pause.play();
     }
+    if(e.keyCode == 77){ //M, mute
+        if(GAME.musicVolume == 1){
+            GAME.musicVolume = 0;
+        }else if(GAME.musicVolume == 0){
+            GAME.musicVolume = 1;
+        }
+        for(var i = 0; i < musics.length; i++){
+            musics[i].volume = GAME.musicVolume;
+        }
+    }
+    if(e.keyCode == 49){
+        GAME.difficulty = 0;
+        alert("Now playing on Normal difficulty.");
+    }
+    if(e.keyCode == 50){
+        GAME.difficulty = 1;
+        alert("Now playing on Hard difficulty.");
+    }
+    if(e.keyCode == 51){
+        GAME.difficulty = 2;
+        alert("Now playing on Extreme difficulty.");
+    }
     if(player.hp > 0 && !GAME.isPaused){
         musics[GAME.level - 1].play();
         e = e || window.event;
@@ -1500,7 +1523,7 @@ function spawnEntities(){
         if(GAME.level == 1){
             if(GAME.frameCount == 0){
                 entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2,
-                                "Stage 1 - Forest", 50, [0, 0, 0], 150));
+                                "Stage 1 - Forest", 50, [0, 0, 0], 150));
                 entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2 + 50,
                                 "BGM: ♪ A Melancholy Autumn ♪", 20, [100, 100, 100], 150));
             }
@@ -1598,7 +1621,7 @@ function spawnEntities(){
         }else if(GAME.level == 2){
             if(GAME.frameCount == 0){
                 entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2,
-                                "Stage 2 — City", 50, [0, 0, 0], 150));
+                                "Stage 2 - City", 50, [0, 0, 0], 150));
                 entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2 + 50,
                                 "BGM: ♪ Urban Groove ♪", 20, [100, 100, 100], 150));
             }
@@ -1702,7 +1725,7 @@ function spawnEntities(){
         if(GAME.level == 1){
             if(GAME.frameCount == 0){
                 entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2,
-                                "Stage 1 — Forest (Hard)", 50, [0, 0, 0], 150));
+                                "Stage 1 - Forest (Hard)", 50, [0, 0, 0], 150));
                 entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2 + 50,
                                 "BGM: ♪ A Melancholy Autumn ♪", 20, [100, 100, 100], 150));
             }
@@ -1800,7 +1823,7 @@ function spawnEntities(){
         }else if(GAME.level == 2){
             if(GAME.frameCount == 0){
                 entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2,
-                                "Stage 2 — City (Hard)", 50, [0, 0, 0], 150));
+                                "Stage 2 - City (Hard)", 50, [0, 0, 0], 150));
                 entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2 + 50,
                                 "BGM: ♪ Urban Groove ♪", 20, [100, 100, 100], 150));
             }
@@ -1904,7 +1927,7 @@ function spawnEntities(){
         if(GAME.level == 1){
             if(GAME.frameCount == 0){
                 entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2,
-                                "Stage 1 EX - Dark Forest", 50, [0, 0, 0], 150));
+                                "Stage 1 EX - Dark Forest", 50, [0, 0, 0], 150));
                 entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2 + 50,
                                 "BGM: ♪ [something something something] ♪", 20, [100, 100, 100], 150));
             }
@@ -2002,7 +2025,7 @@ function spawnEntities(){
         }else if(GAME.level == 2){
             if(GAME.frameCount == 0){
                 entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2,
-                                "Stage 2 — The Plague Nest", 50, [0, 0, 0], 150));
+                                "Stage 2 EX - The Plague Nest", 50, [0, 0, 0], 150));
                 entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2 + 50,
                                 "BGM: ♪ [something something] ♪", 20, [100, 100, 100], 150));
             }

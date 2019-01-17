@@ -79,6 +79,7 @@ function listToColor(color){
 }
 
 var shifting = false;
+var hasWalls = false; //don't ask, don't tell--level 4 thing
 
 var sounds = {
     pew: new Audio("pew.ogg"),
@@ -97,7 +98,9 @@ var sounds = {
     collect: new Audio("winning.ogg"),
     pause: new Audio("pause.ogg"),
     otherHurt: new Audio("otherhurt.ogg"),
-    beam: new Audio("beam.ogg")
+    beam: new Audio("beam.ogg"),
+    voop: new Audio("voop.ogg"),
+    wallBlock: new Audio("wallreflect.ogg"),
 }
 var musics = [
 	new Audio("A_Melancholy_Autumn.ogg"), //Level 1 music
@@ -223,6 +226,7 @@ Particle.prototype.draw = function(){
 function Bullet(X, Y, W, H, color=[0, 0, 0]){
     Entity.call(this, X, Y, W, H);
     this.color = color; //list format
+    this.bounces = 2;
 }
 Bullet.prototype = Object.create(Entity.prototype);
 Bullet.prototype.setVelocity = function(xVel, yVel){ this.velocity = {x: xVel, y: yVel}; }
@@ -230,8 +234,12 @@ Bullet.prototype.setUser = function(usr){ this.user = usr; }
 Bullet.prototype.update = function(){
     this.move();
     this.draw();
-    if(!this.onScreen()){
+    if(!this.onScreen() || this.bounces <= 0){
         this.dead = true;
+        if(this.bounces <= 0){
+            sounds.voop.currentTime = 0;
+            sounds.voop.play();
+        }
     }
 }
 Bullet.prototype.draw = function(){
@@ -783,7 +791,7 @@ Mirage.prototype.interact = function(obj){
         if(this.delayTimer > 100 && this.delayTimer % 5 == 0){
             var dx = obj.position.x - this.position.x;
             var dy = obj.position.y - this.position.y;
-            if(this.variant > 1){
+            if(this.variant < 2){
                 dy = 0;
             }
             var mag = Math.sqrt(dx ** 2 + dy ** 2);
@@ -1550,6 +1558,7 @@ function Wall(X, Y, W, H, variant=1, XVel=-2, YVel=0){
     }
     this.hp = 999;
     this.velocity = {x: XVel, y: YVel};
+    console.log(this.velocity);
 }
 Wall.prototype = Object.create(Entity.prototype);
 Wall.prototype.update = function(){
@@ -1570,6 +1579,8 @@ Wall.prototype.interact = function(obj){
             obj.velocity.x *= -1;
             if(this.position.x < obj.width){
                 obj.hp -= 999;
+                sounds.bossDeath.currentTime = 0;
+                sounds.bossDeath.play();
             }
         }
         //Right
@@ -1589,6 +1600,11 @@ Wall.prototype.interact = function(obj){
         obj.position.y > this.position.y + this.height - 20){
             obj.position.y = this.position.y + this.height;
             obj.velocity.y *= -1;
+        }
+        if(obj instanceof Bullet){
+            obj.bounces--;
+            sounds.wallBlock.currentTime = 0;
+            sounds.wallBlock.play();
         }
     }
     if(obj instanceof Bullet && !(obj instanceof Shield)
@@ -1972,16 +1988,22 @@ function init(){
 }
 
 function handleCheckpoints(){
-    if(GAME.difficulty == 0 &&
-    GAME.frameCount == GAME.levelLengths[GAME.level - 1]/2){
-        entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2,
+    if(GAME.difficulty == 0 && Number.isInteger(GAME.level)){
+        if(
+        (GAME.frameCount == GAME.levelLengths[GAME.level - 1]/2 &&
+            GAME.level < 4) ||
+        ((GAME.frameCount == GAME.levelLengths[GAME.level - 1]/3 ||
+        GAME.frameCount == GAME.levelLengths[GAME.level - 1] * 2/3) &&
+            GAME.level >= 4)){
+            entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2,
                                 "CHECKPOINT!", 30, [0, 0, 0], 150));
-        entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2 + 30,
+            entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2 + 30,
                                 "(Game saved.)", 20, [100, 100, 100], 150));
-        player.hp = 3;
-        sounds.collect.currentTime = 0;
-        sounds.collect.play();
-        GAME.save();
+            player.hp = 3;
+            sounds.collect.currentTime = 0;
+            sounds.collect.play();
+            GAME.save();
+        }
     }
 }
 
@@ -2270,6 +2292,99 @@ function spawnEntities(){
             }
             if(GAME.frameCount == 10000){
                 entities.push(new Hostile(1159, Math.random() * 550, 1));
+            }
+        }else if(GAME.level == 4){
+            //dead pianist
+            //check for reflector walls
+            for(var i in entities){
+                if(entities[i] instanceof Wall){
+                    hasWalls = true;
+                }
+            }
+            if(!hasWalls){
+                entities.push(new Wall(-20, -20, 40, GAME.canvas.height + 40, 2, 0, 0));
+                entities.push(new Wall(-20, -20, GAME.canvas.width + 40, 40, 2, 0, 0));
+                entities.push(new Wall(-20, GAME.canvas.height - 20, GAME.canvas.width + 20, 40, 2, 0, 0));
+            }
+            if(GAME.frameCount == 0){
+                entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2,
+                                "Final Stage - Lab", 50, [0, 0, 0], 150));
+                entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2 + 50,
+                                "BGM: ♪ Apocalypse Lab ♪", 20, [100, 100, 100], 150));
+            }
+            if(GAME.frameCount < 1000){
+                if(GAME.frameCount % 300 == 0){
+                    entities.push(new CrossShot(1199, Math.random() * 550, 3));
+                }
+            }else if(GAME.frameCount < 2000){
+                if(GAME.frameCount % 75 == 0){
+                    entities.push(new Lost(1199, Math.random() * 550, 3));
+                }
+            }else if(GAME.frameCount < 2500){
+                if(GAME.frameCount % 1000 == 250){
+                    entities.push(new Mirage(1199, Math.random() * 550, 3));
+                }
+            }else if(GAME.frameCount < 4000 && GAME.frameCount > 2500){
+                if(GAME.frameCount % 100 == 0){
+                    entities.push(new Lost(1199, Math.random() * 550, 3));
+                }
+                if(GAME.frameCount % 400 == 0){
+                    entities.push(new CrossShot(1199, Math.random() * 550, 3));
+                }
+            }else if(GAME.frameCount < 5000){
+                if(GAME.frameCount % 400 == 0){
+                    entities.push(new HeadSplitter(1199, Math.random() * 550, 1));
+                }
+                if(GAME.frameCount % 1000 == 700){
+                    entities.push(new CrossShot(1199, Math.random() * 550, 3));
+                }
+            }else if(GAME.frameCount < 6500){
+                if(GAME.frameCount % 750 == 0){
+                    entities.push(new Blower(1199, Math.random() * 550, 1));
+                }
+                if(GAME.frameCount % 400 == 0){
+                    entities.push(new CrossShot(1199, Math.random() * 550, 3));
+                }
+            }else if(GAME.frameCount < 8000){
+                if(GAME.frameCount % 250 == 0){
+                    entities.push(new Bat(1199, Math.random() * 550, 3));
+                }
+                if(GAME.frameCount % 250 == 125){
+                    entities.push(new Lost(1199, Math.random() * 550, 3));
+                }
+                if(GAME.frameCount % 750 == 0){
+                    entities.push(new Blower(1199, Math.random() * 550, 1));
+                }
+            }else if(GAME.frameCount < 9000 && GAME.frameCount > 8250){
+                if(GAME.frameCount % 150 == 0){
+                    entities.push(new Memory(1199, Math.random() * 550, 3));
+                }
+                if(GAME.frameCount % 500 == 300){
+                    entities.push(new Mirage(800, Math.random() * 550, 3));
+                }
+            }else if(GAME.frameCount < 10000 && GAME.frameCount > 9000){
+                if(GAME.frameCount % 400 == 0){
+                    entities.push(new Memory(1199, Math.random() * 550, 3));
+                }
+                if(GAME.frameCount % 800 == 0){
+                    entities.push(new Blower(1199, Math.random() * 550, 1));
+                }
+                if(GAME.frameCount % 400 == 125){
+                    entities.push(new Raven(1199, Math.random() * 550, 1));
+                }
+            }else if(GAME.frameCount < 12000 && GAME.frameCount > 10000){
+                if(GAME.frameCount % 500 == 0){
+                    entities.push(new Raven(1199, Math.random() * 550, 1));
+                }
+                if(GAME.frameCount % 800 == 0){
+                    entities.push(new Blower(1199, Math.random() * 550, 1));
+                }
+                if(GAME.frameCount % 600 == 300){
+                    entities.push(new Lost(1199, Math.random() * 550, 3));
+                }
+                if(GAME.frameCount % 600 == 0){
+                    entities.push(new HeadSplitter(1199, Math.random() * 550, 1));
+                }
             }
         }
     }else if(GAME.difficulty == 1){

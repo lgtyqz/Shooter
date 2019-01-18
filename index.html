@@ -2161,7 +2161,7 @@ function handleCheckpoints(){
         if(
         (GAME.frameCount == GAME.levelLengths[GAME.level - 1]/2 &&
             GAME.level < 4) ||
-        (GAME.frameCount % GAME.levelLengths[GAME.level - 1]/3 == 0 &&
+        (GAME.frameCount % (GAME.levelLengths[GAME.level - 1]/3) == 0 &&
         GAME.frameCount < 12500 && GAME.frameCount > 0 &&
             GAME.level >= 4)){
             entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2,

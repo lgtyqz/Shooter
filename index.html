@@ -18,13 +18,18 @@ var GAME = {
         this.canvas.height = 600;
         this.context = this.canvas.getContext("2d");
         document.body.insertBefore(this.canvas, document.body.childNodes[0]);
-        this.load();
+        //this.load();
     },
     activate: function(){
         this.interval = setInterval(main, 20);
         GAME.DATE = new Date();
         this.isPaused = false;
         console.log("Nuclear Cuke");
+        if(player.position.x == 0 && player.position.y == 0 && player.hp == 3){
+            alert("Weapon Loadout:\nZ: " +  player.weapons[0].name +
+        "\nX: " + player.weapons[1].name +
+        "\nC: " + player.weapons[2].name);
+        }
     },
     pause: function(){
         clearInterval(this.interval);
@@ -51,13 +56,29 @@ var GAME = {
             this.level = gameData.level;
             player.hp = gameData.hp;
         }else{
+            this.frameCount = 0;
+            this.level = 1;
+            player.hp = 3;
             this.save();
         }
+    },
+    restart: function(){
+        entities = [];
+        player = new Player(0, 0, 30, 30);
+        rWeapons.sort( function() { return 0.5 - Math.random() } );
+        player.weapons = [rWeapons[5], rWeapons[1], rWeapons[3]];
+        GAME.load();
+    },
+    handleBGM: function(){
+        for(var i = 0; i < musics.length; i++){
+            musics[i].pause();
+        }
+        musics[GAME.level].play();
     },
     frameCount: 0,
     gravity: 1,
     friction: 0.9,
-    level: 1,
+    level: 0,
     levelLengths: [9000, 10000, 10000, 12000],
     difficulty: 0,
     camera: {x:0, y:0},
@@ -102,9 +123,11 @@ var sounds = {
     voop: new Audio("voop.ogg"),
     wallBlock: new Audio("wallreflect.ogg"),
     no: new Audio("no.ogg"),
-    bulletScreen: new Audio("bulletscreen.ogg")
+    bulletScreen: new Audio("bulletscreen.ogg"),
+    enter: new Audio("enter.ogg")
 }
 var musics = [
+    new Audio("Blank.ogg"), //Menu
 	new Audio("A_Melancholy_Autumn.ogg"), //Level 1 music
 	new Audio("Urban_Groove.ogg"), //Level 2 music
 	new Audio("Bath_of_Ice.ogg"), //Level 3 music
@@ -169,31 +192,7 @@ Entity.prototype.onScreen = function(){
 }
 Entity.prototype.interact = function(obj){ /*method stub*/ }
 Entity.prototype.whenHit = function(obj){ /*method stub*/ }
-
-function Text(X, Y, TEXT, size=20, color=[0, 0, 0], duration=80){
-    Entity.call(this, X, Y, 0, 0);
-    this.text = TEXT;
-    this.size = size;
-    this.color = color;
-    this.duration = duration;
-    this.delayTimer = duration;
-}
-Text.prototype = Object.create(Entity.prototype);
-Text.prototype.draw = function(){
-    var CTX = GAME.context;
-    CTX.globalAlpha = (this.delayTimer/this.duration);
-    CTX.fillStyle = listToColor(this.color);
-    CTX.font = this.size + "px Tahoma";
-    CTX.textAlign = "center";
-    CTX.fillText(this.text, this.position.x, this.position.y);
-    CTX.globalAlpha = 1;
-}
-Text.prototype.update = function(){
-    if(this.delayTimer <= 0){
-        this.dead = true;
-    }
-    this.delayTimer--;
-}
+Entity.prototype.update = function(){ /*method stub*/ }
 
 function Particle(X, Y, W, H, color, duration=10){
     Entity.call(this, X, Y, W, H);
@@ -761,7 +760,7 @@ Mirage.prototype = Object.create(Enemy.prototype);
 Mirage.prototype.draw = function(){
     var CTX = GAME.context;
     this.centerPosition();
-    CTX.globalAlpha = (20 - this.delayTimer % 20)/20;
+    CTX.globalAlpha = Math.max((20 - this.delayTimer % 20)/20, 0);
     CTX.fillStyle = listToColor(this.color);
     CTX.fillRect(0, 0, this.width, this.height);
     CTX.restore();
@@ -1293,8 +1292,7 @@ DoomFairy.prototype.update = function(){
         GAME.level++;
         GAME.frameCount = 0;
         player.hp = 3;
-        musics[GAME.level - 2].pause();
-        musics[GAME.level - 1].play();
+        GAME.handleBGM();
         sounds.bossDeath.play();
         GAME.save();
     }
@@ -1387,8 +1385,7 @@ Blazer.prototype.update = function(){
         GAME.level++;
         GAME.frameCount = 0;
         player.hp = 3;
-        musics[GAME.level - 2].pause();
-        musics[GAME.level - 1].play();
+        GAME.handleBGM();
         sounds.bossDeath.play();
         GAME.save();
     }
@@ -1466,8 +1463,7 @@ Hostile.prototype.update = function(obj){
         GAME.level++;
         GAME.frameCount = 0;
         player.hp = 3;
-        musics[GAME.level - 2].pause();
-        musics[GAME.level - 1].play();
+        GAME.handleBGM();
         sounds.bossDeath.play();
         GAME.save();
     }
@@ -1718,8 +1714,13 @@ PatientZero.prototype.whenHit = function(){
                     255 * Math.random()];
 }
 
-function Wall(X, Y, W, H, variant=1, XVel=-2, YVel=0){
+function UtilityObj(X, Y, W, H){
     Entity.call(this, X, Y, W, H);
+}
+UtilityObj.prototype = Object.create(Entity.prototype);
+
+function Wall(X, Y, W, H, variant=1, XVel=-2, YVel=0){
+    UtilityObj.call(this, X, Y, W, H);
     this.variant = variant;
     this.color = [0, 0, 0];
     if(this.variant > 1){
@@ -1729,7 +1730,7 @@ function Wall(X, Y, W, H, variant=1, XVel=-2, YVel=0){
     this.velocity = {x: XVel, y: YVel};
     console.log(this.velocity);
 }
-Wall.prototype = Object.create(Entity.prototype);
+Wall.prototype = Object.create(UtilityObj.prototype);
 Wall.prototype.update = function(){
     Enemy.prototype.update.call(this);
 }
@@ -1781,6 +1782,56 @@ Wall.prototype.interact = function(obj){
         if(this.variant == 1){
             obj.dead = true;
         }
+    }
+}
+
+function Text(X, Y, TEXT, size=20, color=[0, 0, 0], duration=80){
+    Entity.call(this, X, Y, 0, 0);
+    this.text = TEXT;
+    this.size = size;
+    this.color = color;
+    this.duration = duration;
+    this.delayTimer = duration;
+}
+Text.prototype = Object.create(Entity.prototype);
+Text.prototype.draw = function(){
+    var CTX = GAME.context;
+    CTX.globalAlpha = Math.max((this.delayTimer/this.duration), 0);
+    CTX.fillStyle = listToColor(this.color);
+    CTX.font = this.size + "px Tahoma";
+    CTX.textAlign = "center";
+    CTX.fillText(this.text, this.position.x, this.position.y);
+    CTX.globalAlpha = 1;
+}
+Text.prototype.update = function(){
+    if(this.delayTimer <= 0){
+        this.dead = true;
+    }
+    this.delayTimer--;
+}
+
+function Button(X, Y, W, H, text, color=[255, 0, 0], tColor = [255, 255, 255]){
+    UtilityObj.call(this, X, Y, W, H);
+    this.text = text;
+    this.color = color;
+    this.tColor = tColor;
+    this.textSize = 20;
+}
+Button.prototype = Object.create(UtilityObj.prototype);
+Button.prototype.draw = function(){
+    var CTX = GAME.context;
+    CTX.fillStyle = listToColor(this.color);
+    CTX.fillRect(this.position.x, this.position.y, this.width, this.height);
+    CTX.fillStyle = listToColor(this.tColor);
+    CTX.textAlign = "center";
+    CTX.font = this.textSize + "px Tahoma";
+    CTX.fillText(this.text, this.position.x + this.width/2,
+                this.position.y + this.textSize);
+}
+Button.prototype.doStuff = function(){ }
+Button.prototype.interact = function(obj){
+    if(this.collides(obj) && obj instanceof Player){
+        this.doStuff();
     }
 }
 
@@ -1861,11 +1912,12 @@ function drawForeground(){
         CTX.fillRect(15 + 20 * i, 45, 15, 15);
     }
     if(player.hp <= 0){
-        clearInterval(GAME.interval);
-        alert("GAME OVER!\nReload the page to try again.");
+        GAME.pause();
+        alert("GAME OVER!\nUnpause (press P) to try again.");
         for(var i = 0; i < musics.length; i++){
             musics[i].pause();
         }
+        GAME.restart();
     }
     if(GAME.frameCount < GAME.levelLengths[GAME.level - 1]){
         CTX.fillStyle = "#FEFEDE";
@@ -2072,18 +2124,23 @@ document.onkeydown = function(e){
     }
     if(e.keyCode == 49){
         GAME.difficulty = 0;
-        alert("Now playing on Normal difficulty.");
+        entities.push(new Text(600, 300,
+                    "Now playing on Normal difficulty.", 30, [0, 0, 0], 50));
     }
     if(e.keyCode == 50){
         GAME.difficulty = 1;
-        alert("Now playing on Hard difficulty.");
+        entities.push(new Text(600, 300,
+                    "Now playing on Hard difficulty.", 30, [0, 0, 0], 50));
     }
     if(e.keyCode == 51){
         GAME.difficulty = 2;
-        alert("Now playing on Extreme difficulty.");
+        entities.push(new Text(600, 300,
+                    "Now playing on EXTREME difficulty.", 30, [0, 0, 0], 50));
     }
     if(player.hp > 0 && !GAME.isPaused){
-        musics[GAME.level - 1].play();
+        if(Number.isInteger(GAME.level)){
+            musics[GAME.level].play();
+        }
         e = e || window.event;
         if(e.keyCode == 37){ //Left
             player.goingLeft = true;
@@ -2120,8 +2177,7 @@ document.onkeydown = function(e){
             GAME.level++;
             GAME.frameCount = 0;
             player.hp = 3;
-            musics[GAME.level - 2].pause();
-            musics[GAME.level - 1].play();
+            GAME.handleBGM();
             sounds.bossDeath.play();
         }
         if(e.keyCode == 81){ //Q, fast-forward
@@ -2147,12 +2203,35 @@ document.onkeyup = function(e){
         player.goingDown = false;
     }
 }
+
+var menuEntities = [
+    new Button(600 - 175, 400, 150, 25, "Start"),
+    new Button(600 + 25, 400, 150, 25, "Instructions"),
+    new Text(600, 300 - 30,
+                                "Arrow keys to move.", 30, [0, 0, 0], 150),
+];
+menuEntities[0].doStuff = function(){
+    GAME.load();
+    sounds.enter.currentTime = 0;
+    sounds.enter.play();
+    GAME.handleBGM();
+}
+menuEntities[1].doStuff = function(){
+    entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2 - 30,
+                                "Arrow keys to move.", 30, [0, 0, 0], 150));
+    entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2,
+                                "Z/X/C to use weapons (randomly selected every game)", 30, [0, 0, 0], 150));
+    entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2 + 30,
+                                "P to Pause/Unpause.", 30, [0, 0, 0], 150));
+    entities.push(new Text(GAME.canvas.width/2, GAME.canvas.height/2 + 60,
+                                "M to Mute/Unmute music.", 30, [0, 0, 0], 150));
+    player.position.x = 0;
+    player.position.y = 0;
+    sounds.enter.currentTime = 0;
+    sounds.enter.play();
+}
 function init(){
     GAME.start();
-    alert("Instructions:\n================\nArrow keys to move. Z/X/C to use weapons (randomly selected every game)\nP to Pause/Unpause.\nM to Mute/Unmute.");
-    alert("Weapon Loadout:\nZ: " +  player.weapons[0].name +
-        "\nX: " + player.weapons[1].name +
-        "\nC: " + player.weapons[2].name);
     GAME.activate();
 }
 
@@ -3129,6 +3208,28 @@ function spawnEntities(){
         }
     }
 }
+
+/**
+
+
+LONGNESS OVER
+
+
+**/
+
+function drawMenu(){
+    if(GAME.level == 0){
+        for(var i in menuEntities){
+            menuEntities[i].update();
+            menuEntities[i].draw();
+            menuEntities[i].interact(player);
+            if(menuEntities[i].dead){
+                menuEntities.splice(i, 1);
+                i--;
+            }
+        }
+    }
+}
 function main(){
     GAME.clear();
     GAME.context.fillStyle = "#FFFFFF";
@@ -3159,6 +3260,7 @@ function main(){
             }
         }
     }
+    drawMenu();
     drawForeground();
     spawnEntities();
     handleCheckpoints();
